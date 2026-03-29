@@ -1,16 +1,7 @@
-import type { WorkflowTemplate } from "../types/index.js";
-import type { TokenReport } from "./generator.js";
+import type { WorkflowTemplate } from "@/types";
+import type { TokenReport } from "@/core/generator";
 
-/**
- * TokenCounter measures the token cost of MCP tool definitions.
- * Uses a simple byte-based estimator (1 token ~ 4 chars) for portability.
- * For exact counts, tiktoken can be swapped in.
- */
 export class TokenCounter {
-  /**
-   * Estimate tokens for a single workflow's MCP tool definition.
-   * This is what gets loaded into the LLM context window.
-   */
   countWorkflow(workflow: WorkflowTemplate): number {
     const toolDef = {
       name: workflow.toolName,
@@ -21,13 +12,7 @@ export class TokenCounter {
     return this.estimateTokens(serialized);
   }
 
-  /**
-   * Compare token usage: selected workflows vs all workflows.
-   */
-  compare(
-    selected: WorkflowTemplate[],
-    all: WorkflowTemplate[],
-  ): TokenReport {
+  compare(selected: WorkflowTemplate[], all: WorkflowTemplate[]): TokenReport {
     const selectedBreakdown = selected.map((w) => ({
       name: w.toolName,
       tokens: this.countWorkflow(w),
@@ -55,9 +40,6 @@ export class TokenCounter {
     };
   }
 
-  /**
-   * Format a token report as a human-readable string.
-   */
   formatReport(report: TokenReport): string {
     const lines = [
       "",
@@ -67,17 +49,13 @@ export class TokenCounter {
       `Saved:    ~${report.savedTokens} tokens (${report.savingsPercent}%)`,
       "",
       "Per-tool breakdown:",
-      ...report.perToolBreakdown.map(
-        (t) => `  ${t.name}: ~${t.tokens} tokens`,
-      ),
+      ...report.perToolBreakdown.map((t) => `  ${t.name}: ~${t.tokens} tokens`),
       "",
     ];
     return lines.join("\n");
   }
 
-  private buildInputSchema(
-    workflow: WorkflowTemplate,
-  ): Record<string, unknown> {
+  private buildInputSchema(workflow: WorkflowTemplate): Record<string, unknown> {
     const properties: Record<string, unknown> = {};
     const required: string[] = [];
 
@@ -93,17 +71,9 @@ export class TokenCounter {
       }
     }
 
-    return {
-      type: "object",
-      properties,
-      required,
-    };
+    return { type: "object", properties, required };
   }
 
-  /**
-   * Simple token estimator: ~4 characters per token (GPT-4 average).
-   * Swap for tiktoken for exact counts.
-   */
   private estimateTokens(text: string): number {
     return Math.ceil(text.length / 4);
   }

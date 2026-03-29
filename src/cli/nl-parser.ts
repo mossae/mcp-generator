@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import type { WorkflowTemplate } from "../types/index.js";
+import type { WorkflowTemplate } from "@/types";
 
 export interface MatchResult {
   workflow: WorkflowTemplate;

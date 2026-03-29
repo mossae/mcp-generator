@@ -8,7 +8,7 @@ export type {
   RollbackHook,
   ToolInputParam,
   EventSubscription,
-} from "./workflow-template.js";
+} from "@/types/workflow-template";
 
 export type {
   ProviderSpec,
@@ -18,6 +18,6 @@ export type {
   AuthScheme,
   EventSystemSpec,
   ApiCategory,
-} from "./provider-spec.js";
+} from "@/types/provider-spec";
 
-export type { GeneratorConfig } from "./generator-config.js";
+export type { GeneratorConfig } from "@/types/generator-config";

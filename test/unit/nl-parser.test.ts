@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { NLParser } from "../../src/cli/nl-parser.js";
-import { createRocketChatProvider } from "../../src/providers/rocketchat/index.js";
+import { NLParser } from "@/cli/nl-parser";
+import { createRocketChatProvider } from "@/providers/rocketchat";
 
 const provider = createRocketChatProvider();
 const parser = new NLParser(provider.workflowTemplates);

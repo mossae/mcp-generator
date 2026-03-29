@@ -1,4 +1,4 @@
-import type { WorkflowTemplate } from "../../../types/index.js";
+import type { WorkflowTemplate } from "@/types";
 
 export const fileSharing: WorkflowTemplate = {
   id: "file-sharing",

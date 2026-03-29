@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { Generator } from "../../src/core/generator.js";
-import { TokenCounter } from "../../src/core/token-counter.js";
-import { createRocketChatProvider } from "../../src/providers/rocketchat/index.js";
-import type { GeneratorConfig } from "../../src/types/index.js";
+import { Generator } from "@/core/generator";
+import { TokenCounter } from "@/core/token-counter";
+import { createRocketChatProvider } from "@/providers/rocketchat";
+import type { GeneratorConfig } from "@/types";
 
 describe("Generator", () => {
   const provider = createRocketChatProvider();
@@ -20,7 +20,6 @@ describe("Generator", () => {
 
     const result = generator.generateInMemory(provider, config);
 
-    // Should produce the right files
     const filePaths = result.files.map((f) => f.path);
     expect(filePaths).toContain("server/src/tools/onboard-team-member.ts");
     expect(filePaths).toContain("server/src/index.ts");
@@ -29,7 +28,6 @@ describe("Generator", () => {
     expect(filePaths).toContain("server/tsconfig.json");
     expect(filePaths).toContain(".env.example");
 
-    // Tool file should contain decision logic, not just API calls
     const toolFile = result.files.find((f) =>
       f.path.includes("onboard-team-member.ts"),
     );
@@ -54,10 +52,8 @@ describe("Generator", () => {
     const serverFile = result.files.find((f) => f.path === "server/src/index.ts");
     expect(serverFile).toBeDefined();
 
-    // Should import only the two selected workflows
     expect(serverFile!.content).toContain("minimal-chatbot");
     expect(serverFile!.content).toContain("notification-bot");
-    // Should NOT import unselected workflows
     expect(serverFile!.content).not.toContain("onboard-team-member");
     expect(serverFile!.content).not.toContain("cicd-notifier");
   });
@@ -109,7 +105,6 @@ describe("Generator", () => {
       const result = generator.generateInMemory(provider, config);
       expect(result.files.length).toBeGreaterThan(0);
 
-      // Every generated tool file should be non-empty
       const toolFile = result.files.find((f) =>
         f.path.includes(`tools/${workflow.id}.ts`),
       );

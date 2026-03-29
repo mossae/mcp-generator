@@ -1,10 +1,4 @@
-import type { ApiCategory, ApiEndpoint } from "../../types/index.js";
-
-/**
- * Curated API catalog for Rocket.Chat.
- * These are the endpoints referenced by workflow templates.
- * Not all 547 endpoints — only those needed for the 12 workflows.
- */
+import type { ApiCategory, ApiEndpoint } from "@/types";
 
 export const RC_CATEGORIES: ApiCategory[] = [
   {
@@ -152,7 +146,6 @@ export const RC_CATEGORIES: ApiCategory[] = [
 ];
 
 export const RC_ENDPOINTS: ApiEndpoint[] = [
-  // === Authentication ===
   {
     operationId: "login",
     method: "POST",
@@ -172,8 +165,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     parameters: [],
     requiresAuth: true,
   },
-
-  // === Messaging ===
   {
     operationId: "chat.postMessage",
     method: "POST",
@@ -256,8 +247,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     },
     requiresAuth: true,
   },
-
-  // === Channels ===
   {
     operationId: "channels.create",
     method: "POST",
@@ -395,8 +384,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     },
     requiresAuth: true,
   },
-
-  // === Users ===
   {
     operationId: "users.create",
     method: "POST",
@@ -406,13 +393,7 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     parameters: [],
     requestBody: {
       contentType: "application/json",
-      schema: {
-        username: "string",
-        email: "string",
-        name: "string",
-        password: "string",
-        roles: "string[]",
-      },
+      schema: { username: "string", email: "string", name: "string", password: "string", roles: "string[]" },
       required: true,
     },
     requiresAuth: true,
@@ -505,8 +486,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     },
     requiresAuth: true,
   },
-
-  // === DM ===
   {
     operationId: "dm.create",
     method: "POST",
@@ -541,8 +520,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     ],
     requiresAuth: true,
   },
-
-  // === Teams ===
   {
     operationId: "teams.create",
     method: "POST",
@@ -630,8 +607,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     ],
     requiresAuth: true,
   },
-
-  // === Omnichannel ===
   {
     operationId: "livechat/rooms",
     method: "GET",
@@ -694,8 +669,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     ],
     requiresAuth: true,
   },
-
-  // === Integrations ===
   {
     operationId: "integrations.create",
     method: "POST",
@@ -733,8 +706,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     parameters: [],
     requiresAuth: true,
   },
-
-  // === Statistics ===
   {
     operationId: "statistics",
     method: "GET",
@@ -753,8 +724,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     parameters: [],
     requiresAuth: true,
   },
-
-  // === Moderation ===
   {
     operationId: "moderation.reportsByUsers",
     method: "GET",
@@ -778,8 +747,6 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     },
     requiresAuth: true,
   },
-
-  // === Rooms ===
   {
     operationId: "rooms.info",
     method: "GET",

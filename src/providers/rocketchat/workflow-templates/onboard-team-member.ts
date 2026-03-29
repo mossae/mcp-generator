@@ -1,4 +1,4 @@
-import type { WorkflowTemplate } from "../../../types/index.js";
+import type { WorkflowTemplate } from "@/types";
 
 /**
  * Onboard Team Member — the showcase workflow.

@@ -1,18 +1,17 @@
-import type { ProviderSpec, ApiEndpoint, ApiCategory } from "../../types/index.js";
-import type { WorkflowTemplate } from "../../types/index.js";
-import { onboardTeamMember } from "./workflow-templates/onboard-team-member.js";
-import { customerSupportBot } from "./workflow-templates/customer-support-bot.js";
-import { cicdNotifier } from "./workflow-templates/cicd-notifier.js";
-import { teamStandup } from "./workflow-templates/team-standup.js";
-import { contentModeration } from "./workflow-templates/content-moderation.js";
-import { channelManagement } from "./workflow-templates/channel-management.js";
-import { messageSearch } from "./workflow-templates/message-search.js";
-import { fileSharing } from "./workflow-templates/file-sharing.js";
-import { analyticsReporter } from "./workflow-templates/analytics-reporter.js";
-import { webhookIntegration } from "./workflow-templates/webhook-integration.js";
-import { notificationBot } from "./workflow-templates/notification-bot.js";
-import { minimalChatbot } from "./workflow-templates/minimal-chatbot.js";
-import { RC_CATEGORIES, RC_ENDPOINTS } from "./api-catalog.js";
+import type { ProviderSpec } from "@/types";
+import { onboardTeamMember } from "@/providers/rocketchat/workflow-templates/onboard-team-member";
+import { customerSupportBot } from "@/providers/rocketchat/workflow-templates/customer-support-bot";
+import { cicdNotifier } from "@/providers/rocketchat/workflow-templates/cicd-notifier";
+import { teamStandup } from "@/providers/rocketchat/workflow-templates/team-standup";
+import { contentModeration } from "@/providers/rocketchat/workflow-templates/content-moderation";
+import { channelManagement } from "@/providers/rocketchat/workflow-templates/channel-management";
+import { messageSearch } from "@/providers/rocketchat/workflow-templates/message-search";
+import { fileSharing } from "@/providers/rocketchat/workflow-templates/file-sharing";
+import { analyticsReporter } from "@/providers/rocketchat/workflow-templates/analytics-reporter";
+import { webhookIntegration } from "@/providers/rocketchat/workflow-templates/webhook-integration";
+import { notificationBot } from "@/providers/rocketchat/workflow-templates/notification-bot";
+import { minimalChatbot } from "@/providers/rocketchat/workflow-templates/minimal-chatbot";
+import { RC_CATEGORIES, RC_ENDPOINTS } from "@/providers/rocketchat/api-catalog";
 
 export function createRocketChatProvider(): ProviderSpec {
   return {

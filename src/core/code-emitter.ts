@@ -6,30 +6,19 @@ import type {
   ErrorHandler,
   ProviderSpec,
   GeneratorConfig,
-} from "../types/index.js";
-import { toolTemplate } from "../templates/tool.js";
-import { serverTemplate } from "../templates/server.js";
-import { clientTemplate } from "../templates/client.js";
-import { packageJsonTemplate } from "../templates/package-json.js";
-import { tsconfigTemplate } from "../templates/tsconfig-gen.js";
-import { envTemplate } from "../templates/env.js";
+} from "@/types";
+import { toolTemplate } from "@/templates/tool";
+import { serverTemplate } from "@/templates/server";
+import { clientTemplate } from "@/templates/client";
+import { packageJsonTemplate } from "@/templates/package-json";
+import { tsconfigTemplate } from "@/templates/tsconfig-gen";
+import { envTemplate } from "@/templates/env";
 
 export interface EmittedFile {
   path: string;
   content: string;
 }
 
-interface StepCodeBlock {
-  stepId: string;
-  code: string;
-  outputVar: string;
-}
-
-/**
- * CodeEmitter transforms WorkflowTemplates into production-quality TypeScript.
- * It generates MCP tools with real decision logic, error handling, and rollback —
- * not just sequential API call wrappers.
- */
 export class CodeEmitter {
   private toolCompiler: HandlebarsTemplateDelegate;
   private serverCompiler: HandlebarsTemplateDelegate;
@@ -72,9 +61,6 @@ export class CodeEmitter {
     Handlebars.registerHelper("json", (obj: unknown) => JSON.stringify(obj, null, 2));
   }
 
-  /**
-   * Emit all files for a generated MCP server project.
-   */
   emitProject(
     provider: ProviderSpec,
     workflows: WorkflowTemplate[],
@@ -82,7 +68,6 @@ export class CodeEmitter {
   ): EmittedFile[] {
     const files: EmittedFile[] = [];
 
-    // Generate tool files
     for (const workflow of workflows) {
       const toolCode = this.emitTool(workflow, provider);
       files.push({
@@ -91,7 +76,6 @@ export class CodeEmitter {
       });
     }
 
-    // Server entry point
     files.push({
       path: "server/src/index.ts",
       content: this.serverCompiler({
@@ -101,13 +85,11 @@ export class CodeEmitter {
       }),
     });
 
-    // HTTP client
     files.push({
       path: "server/src/client.ts",
       content: this.clientCompiler({ provider }),
     });
 
-    // package.json
     files.push({
       path: "package.json",
       content: this.packageJsonCompiler({
@@ -116,10 +98,8 @@ export class CodeEmitter {
       }),
     });
 
-    // tsconfig.json
     files.push({ path: "server/tsconfig.json", content: this.tsconfigCompiler({}) });
 
-    // .env.example
     files.push({
       path: ".env.example",
       content: this.envCompiler({ provider }),
@@ -128,10 +108,6 @@ export class CodeEmitter {
     return files;
   }
 
-  /**
-   * Emit a single MCP tool file from a WorkflowTemplate.
-   * This is where the magic happens — decision logic, error handling, rollback.
-   */
   emitTool(workflow: WorkflowTemplate, provider: ProviderSpec): string {
     const toolBody = this.buildToolBody(workflow, provider);
     const schemaBlock = this.buildSchemaBlock(workflow);
@@ -144,9 +120,6 @@ export class CodeEmitter {
     });
   }
 
-  /**
-   * Build the Zod schema block as a raw string to avoid Handlebars brace conflicts.
-   */
   private buildSchemaBlock(workflow: WorkflowTemplate): string {
     const lines = ["    {"];
     for (const input of workflow.inputs) {
@@ -166,9 +139,6 @@ export class CodeEmitter {
     return lines.join("\n");
   }
 
-  /**
-   * Build the async handler function block as a raw string.
-   */
   private buildHandlerBlock(workflow: WorkflowTemplate, toolBody: string): string {
     const params = workflow.inputs.map((i) => i.name).join(", ");
     const lines = [
@@ -184,10 +154,6 @@ export class CodeEmitter {
     return lines.join("\n");
   }
 
-  /**
-   * Build the function body for a workflow tool.
-   * Resolves step ordering, injects decision points, wraps error handlers.
-   */
   private buildToolBody(workflow: WorkflowTemplate, provider: ProviderSpec): string {
     const executionOrder = this.resolveExecutionOrder(workflow);
     const lines: string[] = [];
@@ -198,7 +164,6 @@ export class CodeEmitter {
     for (const stepId of executionOrder) {
       if (emittedSteps.has(stepId)) continue;
 
-      // Check if this step has a decision point after it
       const decision = decisionMap.get(stepId);
       const step = workflow.steps.find((s) => s.id === stepId);
       if (!step) continue;
@@ -246,9 +211,6 @@ export class CodeEmitter {
     return lines.join("\n");
   }
 
-  /**
-   * Emit code for a single workflow step, optionally wrapped with error handling.
-   */
   private emitStepCode(
     step: WorkflowStep,
     endpoint: { method: string; path: string } | undefined,
@@ -258,7 +220,6 @@ export class CodeEmitter {
     const method = endpoint?.method?.toLowerCase() ?? "get";
     const path = endpoint?.path ?? `/api/v1/${step.operationId}`;
 
-    // Build input object from mappings
     const inputLines = Object.entries(step.inputMapping)
       .map(([key, source]) => {
         switch (source.type) {
@@ -275,29 +236,15 @@ export class CodeEmitter {
       .join("\n");
 
     const hasInputs = Object.keys(step.inputMapping).length > 0;
-    const inputArg = hasInputs
-      ? `, {\n${inputLines}\n    }`
-      : "";
+    const inputArg = hasInputs ? `, {\n${inputLines}\n    }` : "";
 
-    const apiCall =
-      method === "get"
-        ? `await client.${method}("${path}"${inputArg})`
-        : `await client.${method}("${path}"${inputArg})`;
+    const apiCall = `await client.${method}("${path}"${inputArg})`;
 
-    // Wrap with error handling if specified
     if (errorHandler) {
-      return this.wrapWithErrorHandler(
-        step,
-        varName,
-        apiCall,
-        errorHandler,
-      );
+      return this.wrapWithErrorHandler(step, varName, apiCall, errorHandler);
     }
 
-    return [
-      `  // ${step.description}`,
-      `  const ${varName} = ${apiCall};`,
-    ].join("\n");
+    return `  const ${varName} = ${apiCall};`;
   }
 
   private wrapWithErrorHandler(
@@ -307,7 +254,6 @@ export class CodeEmitter {
     handler: ErrorHandler,
   ): string {
     const lines: string[] = [];
-    lines.push(`  // ${step.description}`);
 
     switch (handler.strategy) {
       case "skip":
@@ -315,7 +261,6 @@ export class CodeEmitter {
         lines.push(`  try {`);
         lines.push(`    ${varName} = ${apiCall};`);
         lines.push(`  } catch (err) {`);
-        lines.push(`    // Non-critical step — skip on failure`);
         lines.push(`  }`);
         break;
 
@@ -336,9 +281,8 @@ export class CodeEmitter {
         lines.push(`  try {`);
         lines.push(`    ${varName} = ${apiCall};`);
         lines.push(`  } catch (err) {`);
-        lines.push(`    // Rollback: undo previous steps`);
         for (const rollbackStepId of handler.rollbackSteps ?? []) {
-          lines.push(`    // TODO: rollback ${rollbackStepId}`);
+          lines.push(`    // rollback ${rollbackStepId}`);
         }
         lines.push(`    throw new Error(\`Step "${step.id}" failed, rolled back: \${err}\`);`);
         lines.push(`  }`);
@@ -353,9 +297,6 @@ export class CodeEmitter {
     return lines.join("\n");
   }
 
-  /**
-   * Resolve step execution order respecting dependencies.
-   */
   private resolveExecutionOrder(workflow: WorkflowTemplate): string[] {
     const visited = new Set<string>();
     const order: string[] = [];
@@ -378,9 +319,7 @@ export class CodeEmitter {
     return order;
   }
 
-  private buildDecisionMap(
-    decisions: DecisionPoint[],
-  ): Map<string, DecisionPoint> {
+  private buildDecisionMap(decisions: DecisionPoint[]): Map<string, DecisionPoint> {
     const map = new Map<string, DecisionPoint>();
     for (const d of decisions) {
       map.set(d.afterStep, d);
@@ -388,9 +327,7 @@ export class CodeEmitter {
     return map;
   }
 
-  private buildErrorMap(
-    handlers: ErrorHandler[],
-  ): Map<string, ErrorHandler> {
+  private buildErrorMap(handlers: ErrorHandler[]): Map<string, ErrorHandler> {
     const map = new Map<string, ErrorHandler>();
     for (const h of handlers) {
       map.set(h.forStep, h);
