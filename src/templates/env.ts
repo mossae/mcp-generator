@@ -1,0 +1,5 @@
+export const envTemplate = `# {{provider.displayName}} Configuration
+RC_URL=http://localhost:3000
+RC_AUTH_TOKEN=your-auth-token
+RC_USER_ID=your-user-id
+`;

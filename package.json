@@ -1,0 +1,37 @@
+{
+  "name": "mcp-generator",
+  "version": "0.1.0",
+  "description": "Generate minimal MCP servers with only the tools your project needs",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-generator": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:workflows": "vitest run test/workflows",
+    "benchmark": "tsx test/benchmarks/token-benchmark.ts"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "@inquirer/prompts": "^7.2.0",
+    "commander": "^12.1.0",
+    "fuse.js": "^7.0.0",
+    "handlebars": "^4.7.8",
+    "tiktoken": "^1.0.18",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
