@@ -13,6 +13,12 @@ import { clientTemplate } from "@/templates/client";
 import { packageJsonTemplate } from "@/templates/package-json";
 import { tsconfigTemplate } from "@/templates/tsconfig-gen";
 import { envTemplate } from "@/templates/env";
+import { rcAppJsonTemplate } from "@/templates/rc-app-json";
+import { rcAppIndexTemplate } from "@/templates/rc-app-index";
+import { rcAppTsconfigTemplate } from "@/templates/rc-app-tsconfig";
+import { rcAppPackageTemplate } from "@/templates/rc-app-package";
+import { buildAppManifest } from "@/providers/rocketchat/event-bridge/app-manifest";
+import { extractEventHandlers } from "@/providers/rocketchat/event-bridge/event-handlers";
 
 export interface EmittedFile {
   path: string;
@@ -26,6 +32,10 @@ export class CodeEmitter {
   private packageJsonCompiler: HandlebarsTemplateDelegate;
   private tsconfigCompiler: HandlebarsTemplateDelegate;
   private envCompiler: HandlebarsTemplateDelegate;
+  private rcAppJsonCompiler: HandlebarsTemplateDelegate;
+  private rcAppIndexCompiler: HandlebarsTemplateDelegate;
+  private rcAppTsconfigCompiler: HandlebarsTemplateDelegate;
+  private rcAppPackageCompiler: HandlebarsTemplateDelegate;
 
   constructor() {
     this.registerHelpers();
@@ -35,6 +45,10 @@ export class CodeEmitter {
     this.packageJsonCompiler = Handlebars.compile(packageJsonTemplate, { noEscape: true });
     this.tsconfigCompiler = Handlebars.compile(tsconfigTemplate, { noEscape: true });
     this.envCompiler = Handlebars.compile(envTemplate, { noEscape: true });
+    this.rcAppJsonCompiler = Handlebars.compile(rcAppJsonTemplate, { noEscape: true });
+    this.rcAppIndexCompiler = Handlebars.compile(rcAppIndexTemplate, { noEscape: true });
+    this.rcAppTsconfigCompiler = Handlebars.compile(rcAppTsconfigTemplate, { noEscape: true });
+    this.rcAppPackageCompiler = Handlebars.compile(rcAppPackageTemplate, { noEscape: true });
   }
 
   private registerHelpers(): void {
@@ -105,7 +119,72 @@ export class CodeEmitter {
       content: this.envCompiler({ provider }),
     });
 
+    const needsEventBridge = config.includeEventBridge ||
+      workflows.some((w) => w.needsEventBridge);
+
+    if (needsEventBridge) {
+      files.push(...this.emitEventBridge(config.serverName, workflows));
+    }
+
     return files;
+  }
+
+  private emitEventBridge(serverName: string, workflows: WorkflowTemplate[]): EmittedFile[] {
+    const eventWorkflows = workflows.filter((w) => w.needsEventBridge);
+    if (eventWorkflows.length === 0) return [];
+
+    const manifest = buildAppManifest(serverName, workflows);
+    const handlers = extractEventHandlers(eventWorkflows);
+    const handlerBlocks = this.buildEventHandlerBlocks(handlers);
+
+    return [
+      {
+        path: "rc-app/app.json",
+        content: this.rcAppJsonCompiler({ manifest }),
+      },
+      {
+        path: "rc-app/src/index.ts",
+        content: this.rcAppIndexCompiler({ handlerBlocks }),
+      },
+      {
+        path: "rc-app/tsconfig.json",
+        content: this.rcAppTsconfigCompiler({}),
+      },
+      {
+        path: "rc-app/package.json",
+        content: this.rcAppPackageCompiler({ manifest }),
+      },
+    ];
+  }
+
+  private buildEventHandlerBlocks(handlers: Array<{
+    event: string;
+    filter: string | undefined;
+    workflowId: string;
+    methodName: string;
+  }>): string {
+    const lines: string[] = [];
+
+    for (const h of handlers) {
+      lines.push(`    try {`);
+      if (h.filter) {
+        lines.push(`      // ${h.filter}`);
+      }
+      lines.push(`      await http.post(CALLBACK_URL, {`);
+      lines.push(`        data: {`);
+      lines.push(`          event: "${h.event}",`);
+      lines.push(`          workflow: "${h.workflowId}",`);
+      lines.push(`          room: message.room,`);
+      lines.push(`          sender: message.sender,`);
+      lines.push(`          text: message.text,`);
+      lines.push(`        },`);
+      lines.push(`      });`);
+      lines.push(`    } catch (e) {`);
+      lines.push(`      this.getLogger().error("${h.methodName} failed:", e);`);
+      lines.push(`    }`);
+    }
+
+    return lines.join("\n");
   }
 
   emitTool(workflow: WorkflowTemplate, provider: ProviderSpec): string {
