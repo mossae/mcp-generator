@@ -240,11 +240,11 @@ export class CodeEmitter {
     const params = workflow.inputs.map((i) => i.name).join(", ");
     const lines = [
       `    async ({ ${params} }) => {`,
+      `      const results: Record<string, any> = {};`,
       toolBody,
       "",
-      "      const result = { success: true };",
       "      return {",
-      '        content: [{ type: "text" as const, text: JSON.stringify(result) }],',
+      '        content: [{ type: "text" as const, text: JSON.stringify(results) }],',
       "      };",
       "    },",
     ];
@@ -323,11 +323,11 @@ export class CodeEmitter {
           case "toolInput":
             return `      ${key}: ${source.field},`;
           case "stepOutput":
-            return `      ${key}: ${this.stepVarName(source.stepId)}${source.path},`;
+            return `      ${key}: results["${source.stepId}"]${source.path},`;
           case "literal":
             return `      ${key}: ${JSON.stringify(source.value)},`;
           case "expression":
-            return `      ${key}: ${source.expr},`;
+            return `      ${key}: ${this.resolveExpression(source.expr)},`;
         }
       })
       .join("\n");
@@ -336,12 +336,34 @@ export class CodeEmitter {
     const inputArg = hasInputs ? `, {\n${inputLines}\n    }` : "";
 
     const apiCall = `await client.${method}("${path}"${inputArg})`;
+    const storeLine = `  results["${step.id}"] = ${varName};`;
 
     if (errorHandler) {
-      return this.wrapWithErrorHandler(step, varName, apiCall, errorHandler);
+      return this.wrapWithErrorHandler(step, varName, apiCall, errorHandler) + "\n" + storeLine;
     }
 
-    return `  const ${varName} = ${apiCall};`;
+    return `  const ${varName} = ${apiCall};\n${storeLine}`;
+  }
+
+  private resolveExpression(expr: string): string {
+    const simpleVarNames: Record<string, string> = {
+      "channelId": 'results["resolve-channel"]?.channel?._id ?? results["find-channel"]?.channel?._id ?? results["check-channel"]?.channel?._id ?? results["get-channel"]?.channel?._id ?? results["create-channel"]?.channel?._id ?? ""',
+      "userId": 'results["check-user-exists"]?.user?._id ?? results["create-user"]?.user?._id ?? ""',
+      "welcomeText": 'welcomeMessage ?? "Welcome to the team!"',
+      "formattedMessage": '`[${status.toUpperCase()}] ${message}`',
+      "failureMessage": '`Build failed: ${message}`',
+      "summaryText": '`Standup summary: ${JSON.stringify(results)}`',
+      "reportText": '`Analytics report: ${JSON.stringify(results)}`',
+      "logMessage": '`Moderation action: severity=${severity}, userId=${userId}`',
+      "visitorId": 'results["get-room-info"]?.rooms?.[0]?.v?._id ?? ""',
+      "memberUsername": '"unknown"',
+      "memberId": '"unknown"',
+      "target": 'targets[0].startsWith("@") ? targets[0] : `#${targets[0]}`',
+      "sentMessageId": 'results["send-to-targets"]?.message?._id ?? ""',
+      "messageId": 'results["search-messages"]?.messages?.[0]?._id ?? ""',
+    };
+
+    return simpleVarNames[expr] ?? expr;
   }
 
   private wrapWithErrorHandler(

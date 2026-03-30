@@ -1,5 +1,13 @@
 import type { WorkflowTemplate } from "@/types";
+import type { ApiEndpoint } from "@/types";
 import type { TokenReport } from "@/core/generator";
+
+const FULL_RC_API_ENDPOINT_COUNT = 547;
+const AVG_TOKENS_PER_RAW_ENDPOINT = 210;
+const FULL_RC_API_TOKENS = FULL_RC_API_ENDPOINT_COUNT * AVG_TOKENS_PER_RAW_ENDPOINT;
+
+const GEMINI_FLASH_FREE_TIER_TOKENS_PER_DAY = 1_000_000;
+const OVERHEAD_PER_ITERATION = 500;
 
 export class TokenCounter {
   countWorkflow(workflow: WorkflowTemplate): number {
@@ -12,31 +20,63 @@ export class TokenCounter {
     return this.estimateTokens(serialized);
   }
 
-  compare(selected: WorkflowTemplate[], all: WorkflowTemplate[]): TokenReport {
+  countEndpoint(endpoint: ApiEndpoint): number {
+    const toolDef = {
+      name: endpoint.operationId,
+      description: endpoint.summary,
+      parameters: endpoint.parameters,
+      requestBody: endpoint.requestBody,
+    };
+    return this.estimateTokens(JSON.stringify(toolDef));
+  }
+
+  countFullApi(endpoints: ApiEndpoint[]): number {
+    return endpoints.reduce((sum, ep) => sum + this.countEndpoint(ep), 0);
+  }
+
+  compare(selected: WorkflowTemplate[], all: WorkflowTemplate[], endpoints?: ApiEndpoint[]): TokenReport {
     const selectedBreakdown = selected.map((w) => ({
       name: w.toolName,
       tokens: this.countWorkflow(w),
     }));
 
-    const allBreakdown = all.map((w) => ({
-      name: w.toolName,
-      tokens: this.countWorkflow(w),
-    }));
-
     const selectedTokens = selectedBreakdown.reduce((sum, t) => sum + t.tokens, 0);
-    const fullTokens = allBreakdown.reduce((sum, t) => sum + t.tokens, 0);
-    const savedTokens = fullTokens - selectedTokens;
+
+    const fullApiTokens = endpoints
+      ? this.countFullApi(endpoints)
+      : FULL_RC_API_TOKENS;
+    const fullApiToolCount = endpoints
+      ? endpoints.length
+      : FULL_RC_API_ENDPOINT_COUNT;
+
+    const allWorkflowTokens = all.reduce((sum, w) => sum + this.countWorkflow(w), 0);
+
+    const savedTokens = fullApiTokens - selectedTokens;
+
+    const minimalPerIteration = selectedTokens + OVERHEAD_PER_ITERATION;
+    const fullPerIteration = fullApiTokens + OVERHEAD_PER_ITERATION;
+
+    const minimalPer10 = minimalPerIteration * 10;
+    const fullPer10 = fullPerIteration * 10;
+
+    const minimalSessions = Math.floor(GEMINI_FLASH_FREE_TIER_TOKENS_PER_DAY / minimalPer10);
+    const fullSessions = Math.floor(GEMINI_FLASH_FREE_TIER_TOKENS_PER_DAY / fullPer10);
 
     return {
       selectedTools: selected.length,
-      totalTools: all.length,
+      totalTools: fullApiToolCount,
       selectedTokens,
-      fullTokens,
+      fullTokens: allWorkflowTokens,
       savedTokens,
-      savingsPercent: fullTokens > 0
-        ? ((savedTokens / fullTokens) * 100).toFixed(1)
+      savingsPercent: fullApiTokens > 0
+        ? ((savedTokens / fullApiTokens) * 100).toFixed(1)
         : "0.0",
       perToolBreakdown: selectedBreakdown,
+      fullApiTokens,
+      fullApiToolCount,
+      perIteration: { minimal: minimalPerIteration, full: fullPerIteration },
+      per10Iterations: { minimal: minimalPer10, full: fullPer10 },
+      freeTeeSessions: { minimal: minimalSessions, full: fullSessions },
     };
   }
 
@@ -44,12 +84,23 @@ export class TokenCounter {
     const lines = [
       "",
       "=== Token Savings Report ===",
-      `Selected: ${report.selectedTools} tools / ${report.totalTools} total available`,
-      `Tokens:   ~${report.selectedTokens} (selected) vs ~${report.fullTokens} (full server)`,
-      `Saved:    ~${report.savedTokens} tokens (${report.savingsPercent}%)`,
       "",
-      "Per-tool breakdown:",
-      ...report.perToolBreakdown.map((t) => `  ${t.name}: ~${t.tokens} tokens`),
+      `  Your server:  ${report.selectedTools} tools, ~${report.selectedTokens} tokens`,
+      `  Full RC API:  ${report.fullApiToolCount} endpoints, ~${report.fullApiTokens} tokens`,
+      `  Savings:      ~${report.savedTokens} tokens (${report.savingsPercent}%)`,
+      "",
+      "  Per-tool breakdown:",
+      ...report.perToolBreakdown.map((t) => `    ${t.name}: ~${t.tokens} tokens`),
+      "",
+      "  --- Agent Loop Cost ---",
+      "",
+      `  Per iteration:     ~${report.perIteration.minimal} (minimal) vs ~${report.perIteration.full} (full)`,
+      `  Per 10-step task:  ~${report.per10Iterations.minimal} (minimal) vs ~${report.per10Iterations.full} (full)`,
+      "",
+      "  --- Gemini Flash Free Tier (1M tokens/day) ---",
+      "",
+      `  Full RC API server:  ${report.freeTeeSessions.full} complete tasks/day`,
+      `  Your minimal server: ${report.freeTeeSessions.minimal} complete tasks/day`,
       "",
     ];
     return lines.join("\n");

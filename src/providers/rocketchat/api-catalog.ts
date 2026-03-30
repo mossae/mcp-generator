@@ -773,6 +773,15 @@ export const RC_ENDPOINTS: ApiEndpoint[] = [
     requiresAuth: true,
   },
   {
+    operationId: "rooms.get",
+    method: "GET",
+    path: "/api/v1/rooms.get",
+    summary: "Get all rooms the user is in",
+    category: "rooms",
+    parameters: [],
+    requiresAuth: true,
+  },
+  {
     operationId: "rooms.cleanHistory",
     method: "POST",
     path: "/api/v1/rooms.cleanHistory",

@@ -67,9 +67,9 @@ export const cicdNotifier: WorkflowTemplate = {
   decisionPoints: [
     {
       afterStep: "resolve-channel",
-      condition: "resolveChannel?.channel != null",
-      ifTrue: ["post-notification"],
-      ifFalse: ["create-channel"],
+      condition: "resolveChannel?.channel == null",
+      ifTrue: ["create-channel"],
+      ifFalse: [],
     },
     {
       afterStep: "post-notification",

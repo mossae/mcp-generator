@@ -10,6 +10,7 @@ import { fileSharing } from "@/providers/rocketchat/workflow-templates/file-shar
 import { analyticsReporter } from "@/providers/rocketchat/workflow-templates/analytics-reporter";
 import { webhookIntegration } from "@/providers/rocketchat/workflow-templates/webhook-integration";
 import { notificationBot } from "@/providers/rocketchat/workflow-templates/notification-bot";
+import { roomListing } from "@/providers/rocketchat/workflow-templates/room-listing";
 import { minimalChatbot } from "@/providers/rocketchat/workflow-templates/minimal-chatbot";
 import { RC_CATEGORIES, RC_ENDPOINTS } from "@/providers/rocketchat/api-catalog";
 
@@ -49,6 +50,7 @@ export function createRocketChatProvider(): ProviderSpec {
       analyticsReporter,
       webhookIntegration,
       notificationBot,
+      roomListing,
       minimalChatbot,
     ],
   };

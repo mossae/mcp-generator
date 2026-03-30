@@ -80,9 +80,9 @@ export const onboardTeamMember: WorkflowTemplate = {
   decisionPoints: [
     {
       afterStep: "check-user-exists",
-      condition: "checkUserExists?.user != null",
-      ifTrue: ["resolve-channels"],
-      ifFalse: ["create-user"],
+      condition: "checkUserExists?.user == null",
+      ifTrue: ["create-user"],
+      ifFalse: [],
     },
   ],
   errorHandlers: [

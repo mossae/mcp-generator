@@ -50,24 +50,30 @@ export const channelManagement: WorkflowTemplate = {
         roomId: { type: "expression", expr: "channelId" },
         userId: { type: "expression", expr: "memberId" },
       },
-      dependsOn: ["find-channel"],
+      dependsOn: ["set-topic"],
     },
     {
       id: "archive-channel",
-      description: "Archive the channel",
+      description: "Archive the channel if requested",
       operationId: "channels.archive",
       inputMapping: {
         roomId: { type: "expression", expr: "channelId" },
       },
-      dependsOn: ["find-channel"],
+      dependsOn: ["invite-members"],
     },
   ],
   decisionPoints: [
     {
       afterStep: "find-channel",
-      condition: "findChannel?.channel != null",
-      ifTrue: ["set-topic", "invite-members"],
-      ifFalse: ["create-channel"],
+      condition: "findChannel?.channel == null",
+      ifTrue: ["create-channel"],
+      ifFalse: [],
+    },
+    {
+      afterStep: "invite-members",
+      condition: "shouldArchive === true",
+      ifTrue: ["archive-channel"],
+      ifFalse: [],
     },
   ],
   errorHandlers: [

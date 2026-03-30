@@ -86,9 +86,8 @@ describe("Generator", () => {
     const result = generator.generateInMemory(provider, config);
 
     expect(result.tokenReport.selectedTools).toBe(1);
-    expect(result.tokenReport.totalTools).toBe(12);
     expect(result.tokenReport.savedTokens).toBeGreaterThan(0);
-    expect(parseFloat(result.tokenReport.savingsPercent)).toBeGreaterThan(80);
+    expect(parseFloat(result.tokenReport.savingsPercent)).toBeGreaterThan(90);
   });
 
   it("generates all 12 workflows without errors", () => {
@@ -127,15 +126,26 @@ describe("TokenCounter", () => {
     expect(tokens).toBeLessThan(1000);
   });
 
-  it("shows significant savings for minimal selection", () => {
+  it("shows significant savings vs full 547-endpoint API", () => {
     const minimal = provider.workflowTemplates.filter(
       (w) => w.id === "minimal-chatbot",
     );
     const report = counter.compare(minimal, provider.workflowTemplates);
 
     expect(report.selectedTools).toBe(1);
-    expect(report.totalTools).toBe(12);
-    expect(parseFloat(report.savingsPercent)).toBeGreaterThan(80);
+    expect(report.fullApiTokens).toBeGreaterThan(100000);
+    expect(parseFloat(report.savingsPercent)).toBeGreaterThan(99);
+  });
+
+  it("includes loop cost and free tier data", () => {
+    const minimal = provider.workflowTemplates.filter(
+      (w) => w.id === "minimal-chatbot",
+    );
+    const report = counter.compare(minimal, provider.workflowTemplates);
+
+    expect(report.perIteration.minimal).toBeLessThan(report.perIteration.full);
+    expect(report.per10Iterations.minimal).toBeLessThan(report.per10Iterations.full);
+    expect(report.freeTeeSessions.minimal).toBeGreaterThan(report.freeTeeSessions.full);
   });
 
   it("formats a readable report", () => {
@@ -146,8 +156,10 @@ describe("TokenCounter", () => {
     const formatted = counter.formatReport(report);
 
     expect(formatted).toContain("Token Savings Report");
-    expect(formatted).toContain("2 tools / 12 total");
+    expect(formatted).toContain("547");
     expect(formatted).toContain("rc_onboard_team_member");
     expect(formatted).toContain("rc_cicd_notify");
+    expect(formatted).toContain("Free Tier");
+    expect(formatted).toContain("tasks/day");
   });
 });

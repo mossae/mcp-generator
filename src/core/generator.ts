@@ -12,6 +12,11 @@ export interface TokenReport {
   savedTokens: number;
   savingsPercent: string;
   perToolBreakdown: Array<{ name: string; tokens: number }>;
+  fullApiTokens: number;
+  fullApiToolCount: number;
+  perIteration: { minimal: number; full: number };
+  per10Iterations: { minimal: number; full: number };
+  freeTeeSessions: { minimal: number; full: number };
 }
 
 export interface GeneratorResult {
