@@ -238,17 +238,64 @@ export class CodeEmitter {
 
   private buildHandlerBlock(workflow: WorkflowTemplate, toolBody: string): string {
     const params = workflow.inputs.map((i) => i.name).join(", ");
+    const minimalReturn = this.buildMinimalReturn(workflow);
     const lines = [
       `    async ({ ${params} }) => {`,
       `      const results: Record<string, any> = {};`,
       toolBody,
       "",
-      "      return {",
-      '        content: [{ type: "text" as const, text: JSON.stringify(results) }],',
-      "      };",
+      minimalReturn,
       "    },",
     ];
     return lines.join("\n");
+  }
+
+  private buildMinimalReturn(workflow: WorkflowTemplate): string {
+    const fields: string[] = [];
+
+    for (const step of workflow.steps) {
+      const varName = `results["${step.id}"]`;
+      const op = step.operationId;
+
+      if (op.includes("users.create") || op.includes("users.info")) {
+        fields.push(`        userId: ${varName}?.user?._id`);
+        fields.push(`        username: ${varName}?.user?.username`);
+      } else if (op.includes("channels.create") || op.includes("channels.info")) {
+        fields.push(`        channelId: ${varName}?.channel?._id`);
+        fields.push(`        channelName: ${varName}?.channel?.name`);
+      } else if (op.includes("chat.postMessage")) {
+        fields.push(`        messageId: ${varName}?.message?._id`);
+      } else if (op.includes("rooms.get")) {
+        fields.push(`        rooms: ${varName}?.update?.map((r: any) => ({ id: r._id, name: r.name ?? r.fname, type: r.t }))`);
+      } else if (op.includes("livechat")) {
+        fields.push(`        livechat: ${varName}?.success ?? false`);
+      } else if (op.includes("statistics")) {
+        fields.push(`        stats: { totalUsers: ${varName}?.totalUsers, totalMessages: ${varName}?.totalMessages, totalChannels: ${varName}?.totalChannels }`);
+      } else if (op.includes("integrations")) {
+        fields.push(`        integrationId: ${varName}?.integration?._id`);
+      }
+    }
+
+    if (fields.length === 0) {
+      fields.push("        success: true");
+    }
+
+    const fieldMap = new Map<string, string>();
+    for (const f of fields) {
+      const key = f.trim().split(":")[0];
+      fieldMap.set(key, f);
+    }
+    const uniqueFields = [...fieldMap.values()];
+
+    return [
+      "      const output = {",
+      "        success: true,",
+      ...uniqueFields.map((f) => f + ","),
+      "      };",
+      "      return {",
+      '        content: [{ type: "text" as const, text: JSON.stringify(output) }],',
+      "      };",
+    ].join("\n");
   }
 
   private buildToolBody(workflow: WorkflowTemplate, provider: ProviderSpec): string {

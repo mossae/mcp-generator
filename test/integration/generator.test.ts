@@ -133,7 +133,7 @@ describe("TokenCounter", () => {
     const report = counter.compare(minimal, provider.workflowTemplates);
 
     expect(report.selectedTools).toBe(1);
-    expect(report.fullApiTokens).toBeGreaterThan(100000);
+    expect(report.fullApiTokens).toBeGreaterThan(40000);
     expect(parseFloat(report.savingsPercent)).toBeGreaterThan(99);
   });
 

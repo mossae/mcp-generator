@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:workflows": "vitest run test/workflows",
-    "benchmark": "tsx test/benchmarks/token-benchmark.ts"
+    "benchmark": "tsx test/benchmarks/token-benchmark.ts",
+    "baseline": "tsx scripts/full-server-baseline.ts"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",

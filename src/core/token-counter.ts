@@ -3,7 +3,7 @@ import type { ApiEndpoint } from "@/types";
 import type { TokenReport } from "@/core/generator";
 
 const FULL_RC_API_ENDPOINT_COUNT = 547;
-const AVG_TOKENS_PER_RAW_ENDPOINT = 210;
+const AVG_TOKENS_PER_RAW_ENDPOINT = 86;
 const FULL_RC_API_TOKENS = FULL_RC_API_ENDPOINT_COUNT * AVG_TOKENS_PER_RAW_ENDPOINT;
 
 const GEMINI_FLASH_FREE_TIER_TOKENS_PER_DAY = 1_000_000;
@@ -81,21 +81,24 @@ export class TokenCounter {
   }
 
   formatReport(report: TokenReport): string {
+    const cost = (t: number) => "$" + ((t / 1_000_000) * 0.075).toFixed(4);
+
     const lines = [
       "",
       "=== Token Savings Report ===",
       "",
       `  Your server:  ${report.selectedTools} tools, ~${report.selectedTokens} tokens`,
-      `  Full RC API:  ${report.fullApiToolCount} endpoints, ~${report.fullApiTokens} tokens`,
-      `  Savings:      ~${report.savedTokens} tokens (${report.savingsPercent}%)`,
+      `  Full RC API:  ${report.fullApiToolCount} endpoints, ~${report.fullApiTokens.toLocaleString()} tokens`,
+      `  Savings:      ~${report.savedTokens.toLocaleString()} tokens (${report.savingsPercent}%)`,
       "",
       "  Per-tool breakdown:",
       ...report.perToolBreakdown.map((t) => `    ${t.name}: ~${t.tokens} tokens`),
       "",
       "  --- Agent Loop Cost ---",
       "",
-      `  Per iteration:     ~${report.perIteration.minimal} (minimal) vs ~${report.perIteration.full} (full)`,
-      `  Per 10-step task:  ~${report.per10Iterations.minimal} (minimal) vs ~${report.per10Iterations.full} (full)`,
+      `  Per iteration:     ${report.perIteration.minimal.toLocaleString()} tokens  (vs ${report.perIteration.full.toLocaleString()} full server)`,
+      `  Per 10-step task:  ${report.per10Iterations.minimal.toLocaleString()} tokens  (vs ${report.per10Iterations.full.toLocaleString()} full server)`,
+      `  Cost per task:     ${cost(report.per10Iterations.minimal)}  (vs ${cost(report.per10Iterations.full)} full server)`,
       "",
       "  --- Gemini Flash Free Tier (1M tokens/day) ---",
       "",
