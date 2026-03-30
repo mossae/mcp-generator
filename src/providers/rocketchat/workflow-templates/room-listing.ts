@@ -3,10 +3,10 @@ import type { WorkflowTemplate } from "@/types";
 export const roomListing: WorkflowTemplate = {
   id: "room-listing",
   name: "Room Listing",
-  intent: "Fetch all rooms the user is part of, including channels and groups.",
+  intent: "List all rooms and channels the user has access to with filtered fields",
   keywords: ["list", "rooms", "channels", "groups", "fetch rooms", "show rooms"],
   toolName: "rc_list_rooms",
-  toolDescription: "List all rooms the current user is a member of, including public/private channels and groups.",
+  toolDescription: "List all rooms the current user is a member of. Returns only id, name, and type per room — not the full raw API response.",
   inputs: [],
   steps: [
     {

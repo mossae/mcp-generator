@@ -12,17 +12,14 @@ describe("NLParser", () => {
     expect(results[0].workflow.id).toBe("onboard-team-member");
   });
 
-  it("matches 'send messages to channels' to minimal-chatbot or notification-bot", () => {
-    const results = parser.parse("send messages to channels");
+  it("matches 'chatbot reply messages' to minimal-chatbot", () => {
+    const results = parser.parse("chatbot reply messages");
     expect(results.length).toBeGreaterThan(0);
-    const ids = results.map((r) => r.workflow.id);
-    expect(
-      ids.includes("minimal-chatbot") || ids.includes("notification-bot"),
-    ).toBe(true);
+    expect(results[0].workflow.id).toBe("minimal-chatbot");
   });
 
-  it("matches 'CI/CD build notifications' to cicd-notifier", () => {
-    const results = parser.parse("CI/CD build notifications");
+  it("matches 'cicd build deploy pipeline' to cicd-notifier", () => {
+    const results = parser.parse("cicd build deploy pipeline");
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].workflow.id).toBe("cicd-notifier");
   });

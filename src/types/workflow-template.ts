@@ -89,10 +89,9 @@ export interface WorkflowTemplate {
   rollbackHooks: RollbackHook[];
   /** API operations used (for token counting and dependency tracking) */
   requiredOperations: string[];
-  /** Whether this workflow needs real-time events (RC App) */
   needsEventBridge: boolean;
-  /** Event subscriptions if needsEventBridge is true */
   eventSubscriptions?: EventSubscription[];
+  customEmitter?: () => string;
 }
 
 export interface EventSubscription {

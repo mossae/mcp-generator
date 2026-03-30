@@ -206,6 +206,10 @@ export class CodeEmitter {
   }
 
   emitTool(workflow: WorkflowTemplate, provider: ProviderSpec): string {
+    if (workflow.customEmitter) {
+      return workflow.customEmitter();
+    }
+
     const toolBody = this.buildToolBody(workflow, provider);
     const schemaBlock = this.buildSchemaBlock(workflow);
     const handlerBlock = this.buildHandlerBlock(workflow, toolBody);
@@ -253,31 +257,109 @@ export class CodeEmitter {
   private buildMinimalReturn(workflow: WorkflowTemplate): string {
     const fields: string[] = [];
 
+    const FIELD_MAP: Record<string, (v: string) => string[]> = {
+      "users.create": (v) => [
+        `        userId: ${v}?.user?._id ?? null`,
+        `        username: ${v}?.user?.username ?? null`,
+      ],
+      "users.info": (v) => [
+        `        userId: ${v}?.user?._id ?? null`,
+        `        username: ${v}?.user?.username ?? null`,
+      ],
+      "users.setActiveStatus": (v) => [
+        `        userDeactivated: ${v}?.success ?? false`,
+      ],
+      "channels.create": (v) => [
+        `        channelId: ${v}?.channel?._id ?? null`,
+        `        channelName: ${v}?.channel?.name ?? null`,
+      ],
+      "channels.info": (v) => [
+        `        channelId: ${v}?.channel?._id ?? null`,
+        `        channelName: ${v}?.channel?.name ?? null`,
+      ],
+      "channels.list": (v) => [
+        `        channels: (${v}?.channels ?? []).map((c: any) => ({ id: c._id, name: c.name }))`,
+      ],
+      "channels.history": (v) => [
+        `        messages: (${v}?.messages ?? []).map((m: any) => ({ id: m._id, text: m.msg, user: m.u?.username, ts: m.ts })).slice(0, 10)`,
+      ],
+      "channels.members": (v) => [
+        `        members: (${v}?.members ?? []).map((m: any) => ({ id: m._id, username: m.username }))`,
+      ],
+      "channels.invite": (v) => [
+        `        invited: ${v}?.success ?? false`,
+      ],
+      "channels.setTopic": (v) => [
+        `        topicSet: ${v}?.success ?? false`,
+      ],
+      "channels.archive": (v) => [
+        `        archived: ${v}?.success ?? false`,
+      ],
+      "chat.postMessage": (v) => [
+        `        messageId: ${v}?.message?._id ?? null`,
+        `        messageSent: ${v}?.success ?? false`,
+      ],
+      "chat.search": (v) => [
+        `        matchedMessages: (${v}?.messages ?? []).map((m: any) => ({ id: m._id, text: m.msg, user: m.u?.username }))`,
+      ],
+      "chat.pinMessage": (v) => [
+        `        pinned: ${v}?.success ?? false`,
+      ],
+      "chat.react": (v) => [
+        `        reacted: ${v}?.success ?? false`,
+      ],
+      "rooms.get": (v) => [
+        `        rooms: (${v}?.update ?? []).map((r: any) => ({ id: r._id, name: r.name ?? r.fname, type: r.t }))`,
+      ],
+      "rooms.info": (v) => [
+        `        roomId: ${v}?.room?._id ?? null`,
+        `        roomName: ${v}?.room?.name ?? null`,
+      ],
+      "rooms.upload": (v) => [
+        `        uploaded: ${v}?.success ?? false`,
+      ],
+      "statistics": (v) => [
+        `        stats: { totalUsers: ${v}?.totalUsers ?? 0, totalMessages: ${v}?.totalMessages ?? 0, totalChannels: ${v}?.totalChannels ?? 0 }`,
+      ],
+      "integrations.create": (v) => [
+        `        integrationId: ${v}?.integration?._id ?? null`,
+      ],
+      "integrations.list": (v) => [
+        `        integrations: (${v}?.integrations ?? []).map((i: any) => ({ id: i._id, name: i.name, type: i.type }))`,
+      ],
+      "moderation.reportsByUsers": (v) => [
+        `        reports: ${v}?.reports ?? []`,
+      ],
+      "moderation.dismissReports": (v) => [
+        `        dismissed: ${v}?.success ?? false`,
+      ],
+      "livechat/rooms": (v) => [
+        `        livechatRooms: (${v}?.rooms ?? []).map((r: any) => ({ id: r._id, visitor: r.v?.name }))`,
+      ],
+      "livechat/room.close": (v) => [
+        `        closed: ${v}?.success ?? false`,
+      ],
+      "livechat/room.transfer": (v) => [
+        `        transferred: ${v}?.success ?? false`,
+      ],
+      "livechat/message": (v) => [
+        `        livechatMessageSent: ${v}?.success ?? false`,
+      ],
+      "livechat/visitors.info": (v) => [
+        `        visitorName: ${v}?.visitor?.name ?? null`,
+      ],
+    };
+
     for (const step of workflow.steps) {
       const varName = `results["${step.id}"]`;
-      const op = step.operationId;
-
-      if (op.includes("users.create") || op.includes("users.info")) {
-        fields.push(`        userId: ${varName}?.user?._id`);
-        fields.push(`        username: ${varName}?.user?.username`);
-      } else if (op.includes("channels.create") || op.includes("channels.info")) {
-        fields.push(`        channelId: ${varName}?.channel?._id`);
-        fields.push(`        channelName: ${varName}?.channel?.name`);
-      } else if (op.includes("chat.postMessage")) {
-        fields.push(`        messageId: ${varName}?.message?._id`);
-      } else if (op.includes("rooms.get")) {
-        fields.push(`        rooms: ${varName}?.update?.map((r: any) => ({ id: r._id, name: r.name ?? r.fname, type: r.t }))`);
-      } else if (op.includes("livechat")) {
-        fields.push(`        livechat: ${varName}?.success ?? false`);
-      } else if (op.includes("statistics")) {
-        fields.push(`        stats: { totalUsers: ${varName}?.totalUsers, totalMessages: ${varName}?.totalMessages, totalChannels: ${varName}?.totalChannels }`);
-      } else if (op.includes("integrations")) {
-        fields.push(`        integrationId: ${varName}?.integration?._id`);
+      const mapper = FIELD_MAP[step.operationId];
+      if (mapper) {
+        fields.push(...mapper(varName));
       }
     }
 
     if (fields.length === 0) {
-      fields.push("        success: true");
+      fields.push("        completed: true");
     }
 
     const fieldMap = new Map<string, string>();
@@ -385,16 +467,13 @@ export class CodeEmitter {
     const apiCall = `await client.${method}("${path}"${inputArg})`;
     const storeLine = `  results["${step.id}"] = ${varName};`;
 
-    if (errorHandler) {
-      return this.wrapWithErrorHandler(step, varName, apiCall, errorHandler) + "\n" + storeLine;
-    }
-
-    return `  const ${varName} = ${apiCall};\n${storeLine}`;
+    const handler = errorHandler ?? { forStep: step.id, strategy: "fail" as const };
+    return this.wrapWithErrorHandler(step, varName, apiCall, handler) + "\n" + storeLine;
   }
 
   private resolveExpression(expr: string): string {
     const simpleVarNames: Record<string, string> = {
-      "channelId": 'results["resolve-channel"]?.channel?._id ?? results["find-channel"]?.channel?._id ?? results["check-channel"]?.channel?._id ?? results["get-channel"]?.channel?._id ?? results["create-channel"]?.channel?._id ?? ""',
+      "channelId": 'results["resolve-channels"]?.channels?.[0]?._id ?? results["resolve-channel"]?.channel?._id ?? results["find-channel"]?.channel?._id ?? results["check-channel"]?.channel?._id ?? results["get-channel"]?.channel?._id ?? results["create-channel"]?.channel?._id ?? ""',
       "userId": 'results["check-user-exists"]?.user?._id ?? results["create-user"]?.user?._id ?? ""',
       "welcomeText": 'welcomeMessage ?? "Welcome to the team!"',
       "formattedMessage": '`[${status.toUpperCase()}] ${message}`',
@@ -456,7 +535,14 @@ export class CodeEmitter {
 
       case "fail":
       default:
-        lines.push(`  const ${varName} = ${apiCall};`);
+        lines.push(`  let ${varName}: any = null;`);
+        lines.push(`  try {`);
+        lines.push(`    ${varName} = ${apiCall};`);
+        lines.push(`  } catch (err: any) {`);
+        lines.push(`    return {`);
+        lines.push(`      content: [{ type: "text" as const, text: JSON.stringify({ success: false, error: err.message, failedStep: "${step.id}" }) }],`);
+        lines.push(`    };`);
+        lines.push(`  }`);
         break;
     }
 

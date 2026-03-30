@@ -12,7 +12,7 @@ describe("Workflow: onboard-team-member", () => {
 
   it("has decision logic for user existence check", () => {
     expect(r.hasDecisionLogic).toBe(true);
-    expect(r.toolFileContent).toContain("checkUserExists");
+    expect(r.toolFileContent).toContain("existing?.user");
   });
 
   it("has error handling for non-critical steps", () => {
@@ -68,15 +68,15 @@ describe("Workflow: cicd-notifier", () => {
 
   it("has decision logic for channel existence", () => {
     expect(r.hasDecisionLogic).toBe(true);
-    expect(r.toolFileContent).toContain("resolveChannel");
+    expect(r.toolFileContent).toContain("resolveRoom");
   });
 
   it("has decision logic for failure pinning", () => {
     expect(r.toolFileContent).toContain("failure");
   });
 
-  it("calls channels.info and channels.create", () => {
-    expect(r.toolFileContent).toContain("/api/v1/channels.info");
+  it("calls channels.create and resolveRoom", () => {
+    expect(r.toolFileContent).toContain("resolveRoom");
     expect(r.toolFileContent).toContain("/api/v1/channels.create");
   });
 
@@ -140,7 +140,7 @@ describe("Workflow: channel-management", () => {
 
   it("has decision logic for create vs update", () => {
     expect(r.hasDecisionLogic).toBe(true);
-    expect(r.toolFileContent).toContain("findChannel");
+    expect(r.toolFileContent).toContain("resolveRoom");
   });
 
   it("calls channels.create and channels.setTopic", () => {
@@ -291,6 +291,6 @@ describe("All Workflows Summary", () => {
 
   it("exactly 2 workflows need event bridge", () => {
     const withBridge = allIds.filter((id) => runWorkflow(id).hasEventBridge);
-    expect(withBridge).toEqual(["customer-support-bot", "content-moderation"]);
+    expect(withBridge).toEqual(["customer-support-bot", "content-moderation", "mention-auto-reply"]);
   });
 });

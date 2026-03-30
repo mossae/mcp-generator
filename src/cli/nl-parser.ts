@@ -17,7 +17,7 @@ export class NLParser {
         { name: "name", weight: 0.15 },
         { name: "toolDescription", weight: 0.1 },
       ],
-      threshold: 0.5,
+      threshold: 0.4,
       includeScore: true,
       shouldSort: true,
     });
@@ -54,29 +54,33 @@ export class NLParser {
   private tryDirectMatch(input: string): MatchResult[] {
     const lower = input.toLowerCase().trim();
     const tokens = lower.split(/[\s,]+/).filter(Boolean);
+    const stopWords = new Set(["a", "an", "the", "to", "for", "and", "or", "my", "new", "with", "in"]);
+    const meaningful = tokens.filter((t) => !stopWords.has(t) && t.length > 2);
 
     const results: MatchResult[] = [];
 
     for (const workflow of this.getAllWorkflows()) {
-      const idMatch = tokens.some((t) => workflow.id.includes(t));
-      const keywordMatch = workflow.keywords.some((kw) =>
-        tokens.some((t) => kw.includes(t) || t.includes(kw)),
-      );
+      const idTokens = workflow.id.split("-");
+      const idOverlap = meaningful.filter((t) => idTokens.some((id) => id.includes(t) || t.includes(id)));
+      const idScore = idOverlap.length / Math.max(idTokens.length, 1);
 
-      if (idMatch) {
-        results.push({ workflow, score: 0.95 });
-      } else if (keywordMatch) {
-        const matchCount = workflow.keywords.filter((kw) =>
-          tokens.some((t) => kw.includes(t) || t.includes(kw)),
-        ).length;
-        results.push({
-          workflow,
-          score: Math.min(0.9, 0.5 + matchCount * 0.1),
-        });
+      const kwMatches = workflow.keywords.filter((kw) =>
+        meaningful.some((t) => kw.includes(t) || t.includes(kw)),
+      );
+      const kwScore = kwMatches.length / Math.max(workflow.keywords.length, 1);
+
+      const combinedScore = idScore * 0.6 + kwScore * 0.4;
+
+      if (combinedScore >= 0.25) {
+        results.push({ workflow, score: Math.min(0.95, combinedScore) });
       }
     }
 
-    return results.sort((a, b) => b.score - a.score);
+    if (results.length === 0) return [];
+
+    results.sort((a, b) => b.score - a.score);
+    const topScore = results[0].score;
+    return results.filter((r) => r.score >= topScore * 0.6);
   }
 
   private getAllWorkflows(): WorkflowTemplate[] {

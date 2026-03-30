@@ -1,5 +1,83 @@
 import type { WorkflowTemplate } from "@/types";
 
+const CUSTOM_CODE = `import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { RocketChatClient } from "../client.js";
+
+export function registerCustomerSupportBot(
+  server: McpServer,
+  client: RocketChatClient,
+): void {
+  server.tool(
+    "rc_handle_support_ticket",
+    "Handle a customer support ticket: checks visitor history, sends a response, and decides whether to escalate or close based on the issue type.",
+    {
+      roomId: z.string().describe("The livechat room ID"),
+      responseText: z.string().describe("Response to send to the visitor"),
+      issueType: z.string().describe("Issue category: billing, technical, general"),
+      escalateToUserId: z.string().describe("User ID to escalate to (optional)").optional(),
+    },
+    async ({ roomId, responseText, issueType, escalateToUserId }) => {
+      const visitorInfo = await client.get("/api/v1/livechat/visitors.info", {
+        visitorId: roomId,
+      }).catch(() => null);
+
+      let responseSent = false;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await client.post("/api/v1/livechat/message", {
+            rid: roomId,
+            msg: responseText,
+          });
+          responseSent = true;
+          break;
+        } catch {
+          if (attempt === 1) break;
+        }
+      }
+
+      let action: string;
+      let escalated = false;
+      let closed = false;
+
+      if (issueType === "general" && responseSent) {
+        try {
+          await client.post("/api/v1/livechat/room.close", { rid: roomId });
+          closed = true;
+          action = "closed";
+        } catch {
+          action = "close-failed";
+        }
+      } else if (escalateToUserId) {
+        try {
+          await client.post("/api/v1/livechat/room.transfer", {
+            rid: roomId,
+            userId: escalateToUserId,
+          });
+          escalated = true;
+          action = "escalated";
+        } catch {
+          action = "escalation-failed";
+        }
+      } else {
+        action = "responded-only";
+      }
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({
+          success: responseSent,
+          action,
+          visitorName: visitorInfo?.visitor?.name ?? null,
+          responseSent,
+          escalated,
+          closed,
+        }) }],
+      };
+    },
+  );
+}
+`;
+
 export const customerSupportBot: WorkflowTemplate = {
   id: "customer-support-bot",
   name: "Customer Support Bot",
@@ -17,76 +95,23 @@ export const customerSupportBot: WorkflowTemplate = {
     { name: "escalateToUserId", type: "string", description: "User ID to escalate to (optional)", required: false },
   ],
   steps: [
-    {
-      id: "get-room-info",
-      description: "Get the livechat room details",
-      operationId: "livechat/rooms",
-      inputMapping: {},
-    },
-    {
-      id: "get-visitor-info",
-      description: "Fetch visitor information for context",
-      operationId: "livechat/visitors.info",
-      inputMapping: {
-        visitorId: { type: "expression", expr: "visitorId" },
-      },
-      dependsOn: ["get-room-info"],
-    },
-    {
-      id: "send-response",
-      description: "Send the support response to the visitor",
-      operationId: "livechat/message",
-      inputMapping: {
-        rid: { type: "toolInput", field: "roomId" },
-        msg: { type: "toolInput", field: "responseText" },
-      },
-      dependsOn: ["get-visitor-info"],
-    },
-    {
-      id: "escalate-ticket",
-      description: "Transfer the room to a specialist agent (for technical/billing issues)",
-      operationId: "livechat/room.transfer",
-      inputMapping: {
-        rid: { type: "toolInput", field: "roomId" },
-        userId: { type: "toolInput", field: "escalateToUserId" },
-      },
-      dependsOn: ["send-response"],
-    },
-    {
-      id: "close-ticket",
-      description: "Close the livechat room (for resolved general issues)",
-      operationId: "livechat/room.close",
-      inputMapping: {
-        rid: { type: "toolInput", field: "roomId" },
-      },
-      dependsOn: ["send-response"],
-    },
+    { id: "get-visitor", description: "Get visitor info", operationId: "livechat/visitors.info", inputMapping: {} },
+    { id: "send-response", description: "Send response", operationId: "livechat/message", inputMapping: {} },
+    { id: "escalate-or-close", description: "Escalate or close based on issue type", operationId: "livechat/room.transfer", inputMapping: {} },
   ],
   decisionPoints: [
-    {
-      afterStep: "send-response",
-      condition: 'issueType === "general"',
-      ifTrue: ["close-ticket"],
-      ifFalse: ["escalate-ticket"],
-    },
+    { afterStep: "send-response", condition: 'issueType === "general"', ifTrue: ["close"], ifFalse: ["escalate"] },
   ],
   errorHandlers: [
-    { forStep: "get-room-info", strategy: "fail" },
-    { forStep: "get-visitor-info", strategy: "skip" },
+    { forStep: "get-visitor", strategy: "skip" },
     { forStep: "send-response", strategy: "retry", maxRetries: 2 },
-    { forStep: "escalate-ticket", strategy: "retry", maxRetries: 2 },
-    { forStep: "close-ticket", strategy: "skip" },
+    { forStep: "escalate-or-close", strategy: "skip" },
   ],
   rollbackHooks: [],
-  requiredOperations: [
-    "livechat/rooms",
-    "livechat/visitors.info",
-    "livechat/message",
-    "livechat/room.transfer",
-    "livechat/room.close",
-  ],
+  requiredOperations: ["livechat/visitors.info", "livechat/message", "livechat/room.transfer", "livechat/room.close"],
   needsEventBridge: true,
   eventSubscriptions: [
-    { event: "message", filter: "livechat room", triggerStep: "get-room-info" },
+    { event: "message", filter: "livechat room", triggerStep: "get-visitor" },
   ],
+  customEmitter: () => CUSTOM_CODE,
 };

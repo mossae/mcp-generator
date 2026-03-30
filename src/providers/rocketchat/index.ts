@@ -11,6 +11,7 @@ import { analyticsReporter } from "@/providers/rocketchat/workflow-templates/ana
 import { webhookIntegration } from "@/providers/rocketchat/workflow-templates/webhook-integration";
 import { notificationBot } from "@/providers/rocketchat/workflow-templates/notification-bot";
 import { roomListing } from "@/providers/rocketchat/workflow-templates/room-listing";
+import { mentionAutoReply } from "@/providers/rocketchat/workflow-templates/mention-auto-reply";
 import { minimalChatbot } from "@/providers/rocketchat/workflow-templates/minimal-chatbot";
 import { RC_CATEGORIES, RC_ENDPOINTS } from "@/providers/rocketchat/api-catalog";
 
@@ -51,6 +52,7 @@ export function createRocketChatProvider(): ProviderSpec {
       webhookIntegration,
       notificationBot,
       roomListing,
+      mentionAutoReply,
       minimalChatbot,
     ],
   };
