@@ -1,6 +1,7 @@
-export { Generator } from "@/core/generator";
-export { CodeEmitter } from "@/core/code-emitter";
+export { Generator, type GeneratorResult, type TokenReport } from "@/core/generator";
+export { CodeEmitter, type EmittedFile } from "@/core/code-emitter";
 export { TokenCounter } from "@/core/token-counter";
-export { NLParser } from "@/cli/nl-parser";
+export { NLParser, type MatchResult } from "@/cli/nl-parser";
+export { loadAndResolve, findConfigFile } from "@/cli/config-loader";
 export { createRocketChatProvider } from "@/providers/rocketchat";
 export type * from "@/types";
