@@ -24,5 +24,10 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 *.tgz
-.DS_Store # macOS system files
-.vscode/ # VS Code configuration files
+.DS_Store
+.vscode/
+
+# Generated output
+test-output/
+test-config-tmp/
+generated-mcp-server/

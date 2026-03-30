@@ -1,0 +1,16 @@
+{
+  "name": "rc-admin-mcp",
+  "version": "1.0.0",
+  "description": "Minimal Rocket.Chat MCP server (3 tools, ~153 tokens)",
+  "mcpServers": {
+    "rocketchat": {
+      "command": "node",
+      "args": ["${extensionPath}/server/dist/index.js"],
+      "env": {
+        "RC_URL": "${RC_URL}",
+        "RC_AUTH_TOKEN": "${RC_AUTH_TOKEN}",
+        "RC_USER_ID": "${RC_USER_ID}"
+      }
+    }
+  }
+}

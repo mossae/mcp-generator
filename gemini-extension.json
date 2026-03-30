@@ -1,0 +1,23 @@
+{
+  "name": "mcp-generator",
+  "version": "0.1.0",
+  "description": "Generate minimal MCP servers with only the tools your project needs. Reduces context bloat by 80-95%.",
+  "commands": {
+    "generate": {
+      "description": "Generate a minimal MCP server from natural language or workflow IDs",
+      "entrypoint": "dist/index.js",
+      "args": ["generate"]
+    },
+    "list": {
+      "description": "List all available workflows and their token costs",
+      "entrypoint": "dist/index.js",
+      "args": ["list"]
+    },
+    "measure": {
+      "description": "Measure token savings for a set of workflows",
+      "entrypoint": "dist/index.js",
+      "args": ["measure"]
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

@@ -19,6 +19,7 @@ import { rcAppTsconfigTemplate } from "@/templates/rc-app-tsconfig";
 import { rcAppPackageTemplate } from "@/templates/rc-app-package";
 import { buildAppManifest } from "@/providers/rocketchat/event-bridge/app-manifest";
 import { extractEventHandlers } from "@/providers/rocketchat/event-bridge/event-handlers";
+import { geminiExtensionTemplate } from "@/templates/gemini-extension";
 
 export interface EmittedFile {
   path: string;
@@ -36,6 +37,7 @@ export class CodeEmitter {
   private rcAppIndexCompiler: HandlebarsTemplateDelegate;
   private rcAppTsconfigCompiler: HandlebarsTemplateDelegate;
   private rcAppPackageCompiler: HandlebarsTemplateDelegate;
+  private geminiExtCompiler: HandlebarsTemplateDelegate;
 
   constructor() {
     this.registerHelpers();
@@ -49,6 +51,7 @@ export class CodeEmitter {
     this.rcAppIndexCompiler = Handlebars.compile(rcAppIndexTemplate, { noEscape: true });
     this.rcAppTsconfigCompiler = Handlebars.compile(rcAppTsconfigTemplate, { noEscape: true });
     this.rcAppPackageCompiler = Handlebars.compile(rcAppPackageTemplate, { noEscape: true });
+    this.geminiExtCompiler = Handlebars.compile(geminiExtensionTemplate, { noEscape: true });
   }
 
   private registerHelpers(): void {
@@ -117,6 +120,21 @@ export class CodeEmitter {
     files.push({
       path: ".env.example",
       content: this.envCompiler({ provider }),
+    });
+
+    const totalTokens = workflows.reduce((sum, w) => {
+      const def = JSON.stringify({ name: w.toolName, description: w.toolDescription });
+      return sum + Math.ceil(def.length / 4);
+    }, 0);
+
+    files.push({
+      path: "gemini-extension.json",
+      content: this.geminiExtCompiler({
+        serverName: config.serverName,
+        serverVersion: config.serverVersion,
+        workflowCount: workflows.length,
+        totalTokens,
+      }),
     });
 
     const needsEventBridge = config.includeEventBridge ||

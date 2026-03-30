@@ -1,0 +1,9 @@
+{
+  "id": "rc-admin-mcp-event-bridge",
+  "version": "1.0.0",
+  "requiredApiVersion": "^1.4.0",
+  "name": "rc-admin-mcp Event Bridge",
+  "nameSlug": "rc-admin-mcp",
+  "description": "Event bridge for rc-admin-mcp. Listens for: message",
+  "classFile": "dist/index.js"
+}
